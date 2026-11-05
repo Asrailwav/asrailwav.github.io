@@ -24,10 +24,17 @@ const PERFIL = {
   nombre:  "Asrail",
   usuario: "@asrail.wav",
   frase:   "Visión, dicción: Criterio.",
-  genero:  "Rap / R&B — Guatemala",
+  genero:  "Rap — Guatemala",
+
+  // Texto de la banda que se desliza (marquesina)
+  banda:   "Nuevos Lanzamientos Pronto",
   foto:    "foto.jpg",
 
-  // 🎵 Canción del tocadiscos: sube tu .mp3 junto a index.html y pon su nombre aquí.
+  // 🎵 Canción del tocadiscos (desde YouTube): el código después de youtu.be/
+  //    y el segundo en el que empieza. Para no usarla: cancionYoutube: null
+  cancionYoutube: { id: "7ePpbq5x2Xk", inicio: 15 },
+
+  // Si no hay canción de YouTube: sube tu .mp3 junto a index.html y pon su nombre aquí.
   //    Si lo dejas vacío ("") o no encuentra el archivo, suena un beat de demo.
   cancion: "cancion.mp3",
 
@@ -100,9 +107,11 @@ const PERFIL = {
   .playing .arm{transform:rotate(0deg)}
 
   /* Nombre glitch */
-  h1{margin-top:38px;text-align:center;font-size:clamp(54px,17vw,84px);line-height:.9;font-weight:700;letter-spacing:-2px;
-    position:relative;cursor:default;user-select:none}
-  h1 span{display:inline-block;transition:transform .25s cubic-bezier(.3,1.6,.5,1)}
+  h1{margin-top:40px;text-align:center;font-size:clamp(66px,23vw,112px);line-height:.88;font-weight:700;letter-spacing:-3px;
+    position:relative;cursor:default;user-select:none;filter:drop-shadow(0 0 22px rgba(255,255,255,.12))}
+  h1 span{display:inline-block;transition:transform .25s cubic-bezier(.3,1.6,.5,1);
+    background:linear-gradient(180deg,#ffffff 0%,#e9eaec 45%,#9a9ea5 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+  h1 span:nth-child(even){background-image:linear-gradient(180deg,#c9ccd1 0%,#8d9198 55%,#5a5e65 100%)}
   h1::before,h1::after{content:attr(data-t);position:absolute;inset:0;opacity:0}
   h1.glitch::before{opacity:.8;color:var(--red);transform:translate(-3px,1px);clip-path:inset(20% 0 55% 0);animation:g1 .3s steps(2) 2}
   h1.glitch::after{opacity:.8;color:#3df;transform:translate(3px,-1px);clip-path:inset(60% 0 10% 0);animation:g2 .3s steps(2) 2}
@@ -132,6 +141,17 @@ const PERFIL = {
   .video:hover .pl{transform:scale(1.12)}
   .video iframe{width:100%;height:100%;border:0}
   .video .tt{font-size:12px;letter-spacing:1px;color:#ddd}
+
+  /* Encabezado de redes: texto que se escribe solo + señal */
+  .dial{margin:34px 0 12px;display:flex;justify-content:space-between;align-items:center;font-size:11px;letter-spacing:2px;color:var(--muted)}
+  .dial b{color:var(--ink);font-weight:600}
+  .dial .cur{display:inline-block;width:7px;height:12px;margin-left:2px;vertical-align:-2px;background:var(--ink);animation:blink 1s steps(1) infinite}
+  .sig{display:inline-flex;gap:3px;align-items:flex-end;height:14px}
+  .sig i{width:3px;background:var(--muted);border-radius:1px;animation:sig 1.6s ease-in-out infinite}
+  .sig i:nth-child(1){height:4px}.sig i:nth-child(2){height:7px;animation-delay:.2s}
+  .sig i:nth-child(3){height:10px;animation-delay:.4s}.sig i:nth-child(4){height:14px;animation-delay:.6s}
+  @keyframes sig{0%,100%{background:var(--muted)}40%{background:var(--ink)}}
+  #yt{position:fixed;left:-9999px;top:0;width:200px;height:200px;opacity:0;pointer-events:none}
 
   /* Tracklist */
   .tracks{list-style:none;border-top:1px solid var(--line)}
@@ -168,6 +188,7 @@ const PERFIL = {
 </head>
 <body>
 <canvas id="scope"></canvas>
+<div id="yt"></div>
 
 <main>
   <div class="top mono">
@@ -197,7 +218,7 @@ const PERFIL = {
   <div class="sec mono" id="destSec"><span id="destLabel"></span><span class="eq"><i></i><i></i><i></i><i></i></span></div>
   <div class="video" id="video" role="button" tabindex="0" aria-label="Reproducir video"></div>
 
-  <div class="sec mono"><span>TRACKLIST / REDES</span><span id="count"></span></div>
+  <div class="dial mono" aria-hidden="true"><span>SÍGUEME EN → <b id="tw"></b><i class="cur"></i></span><span class="sig"><i></i><i></i><i></i><i></i></span></div>
   <nav><ul class="tracks" id="links"></ul></nav>
 
   <div class="actions mono">
@@ -266,6 +287,27 @@ if (PERFIL.cancion) {
   song.addEventListener("error", () => { songOk = false; song = null; });
 }
 
+// Canción desde YouTube (reproductor oculto)
+let yt = null, ytOk = false, ytStarted = false;
+const YTS = PERFIL.cancionYoutube;
+if (YTS && YTS.id) {
+  window.onYouTubeIframeAPIReady = () => {
+    yt = new YT.Player("yt", {
+      width: 200, height: 200, videoId: YTS.id,
+      playerVars: { start: YTS.inicio || 0, controls: 0, playsinline: 1, rel: 0 },
+      events: {
+        onReady: () => { ytOk = true; },
+        onStateChange: e => { if (e.data === 0) { yt.seekTo(YTS.inicio || 0, true); yt.playVideo(); } },  // al terminar, vuelve a empezar
+        onError: () => { ytOk = false; if (playing) { musicStop(); musicStart(); } }
+      }
+    });
+  };
+  const tag = document.createElement("script");
+  tag.src = "https://www.youtube.com/iframe_api";
+  document.head.appendChild(tag);
+}
+function ytRate(r){ if (!ytOk) return; const ok = [.25, .5, 1, 1.5, 2]; yt.setPlaybackRate(ok.reduce((a, b) => Math.abs(b - r) < Math.abs(a - r) ? b : a)); }
+
 let noiseBuf = null, beatTimer = null, step = 0, nextT = 0, crackle = null;
 function noise(){
   if (noiseBuf) return noiseBuf;
@@ -321,6 +363,11 @@ function startCrackle(){
 function musicStart(){
   ensureCtx();
   startCrackle();
+  if (ytOk) {
+    if (!ytStarted) { yt.seekTo(YTS.inicio || 0, true); ytStarted = true; }
+    yt.setVolume(100); yt.unMute(); yt.setPlaybackRate(1); yt.playVideo();
+    return;
+  }
   if (song) {
     song.playbackRate = 1;
     song.play().catch(() => { song = null; if (playing) startBeat(); });   // si falla, usa el beat demo
@@ -334,6 +381,7 @@ function startBeat(){
   beatTimer = setInterval(schedule, 25); schedule();
 }
 function musicStop(){
+  if (ytOk) yt.pauseVideo();
   if (song) song.pause();
   clearInterval(beatTimer); beatTimer = null;
   if (crackle) { try { crackle.stop(); } catch(e){} crackle = null; }
@@ -345,8 +393,8 @@ const h1 = $("nombre");
 h1.dataset.t = PERFIL.nombre.toUpperCase();
 h1.innerHTML = [...PERFIL.nombre.toUpperCase()].map(c => "<span>" + c + "</span>").join("");
 $("handle").innerHTML = "<b>" + PERFIL.usuario + "</b> · " + PERFIL.genero;
-const mqTxt = [PERFIL.usuario, PERFIL.frase, PERFIL.genero, "Nueva música pronto"].map(t => t + "<em>✦</em>").join("");
-$("mq").innerHTML = mqTxt + mqTxt + mqTxt + mqTxt;
+const mqTxt = (PERFIL.banda + "<em>✦</em>").repeat(4);
+$("mq").innerHTML = mqTxt + mqTxt;
 $("footer").textContent = "© " + new Date().getFullYear() + " " + PERFIL.usuario.toUpperCase() + " — TODOS LOS DERECHOS RESERVADOS";
 
 // Letras que saltan al pasar el mouse + glitch
@@ -380,11 +428,12 @@ vinyl.addEventListener("pointermove", e => {
   const a = centerAngle(e); let d = a - lastA; if (d > 180) d -= 360; if (d < -180) d += 360;
   angle += d; speed = d; lastA = a; moved += Math.abs(d);
   energy = Math.min(1.6, energy + Math.abs(d) / 40);
-  if (playing && song) {                       // scratch real sobre tu canción
+  if (playing && ytOk) ytRate(Math.abs(d) / 3.2);   // scratch sobre la canción de YouTube
+  else if (playing && song) {                  // scratch real sobre tu canción
     song.playbackRate = Math.max(.25, Math.min(3, Math.abs(d) / 3.2 || .25));
   } else if (Math.abs(d) > 6) note(Math.floor(Math.random() * 5), .08, .04, "sawtooth");
 });
-vinyl.addEventListener("pointerup", () => { dragging = false; vinyl.style.cursor = ""; if (song) song.playbackRate = 1; if (moved < 6) setPlaying(!playing); });
+vinyl.addEventListener("pointerup", () => { dragging = false; vinyl.style.cursor = ""; if (song) song.playbackRate = 1; if (playing) ytRate(1); if (moved < 6) setPlaying(!playing); });
 vinyl.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setPlaying(!playing); } });
 
 /* ---------- Osciloscopio de fondo (reacciona al mouse/dedo) ---------- */
@@ -447,7 +496,15 @@ if (d && d.youtubeId) {
 
 /* ---------- Tracklist ---------- */
 const activos = PERFIL.links.filter(l => l.url && l.url.trim());
-$("count").textContent = String(activos.length).padStart(2, "0") + " TRACKS";
+// "SÍGUEME EN → ..." se escribe solo y va cambiando de red
+const tw = $("tw"); let twI = 0, twTimer = null;
+function typeWord(w){
+  clearTimeout(twTimer); let k = 0;
+  const step = () => { tw.textContent = w.slice(0, ++k).toUpperCase(); if (k < w.length) twTimer = setTimeout(step, 55); };
+  step();
+}
+function nextWord(){ if (!activos.length) return; typeWord(activos[twI++ % activos.length].texto); }
+nextWord(); if (!reduce) setInterval(nextWord, 2600);
 const bars = () => Array.from({length: 10}, (_, i) =>
   '<i style="height:' + (4 + Math.round(Math.random() * 14)) + 'px;animation-delay:-' + (i * .09).toFixed(2) + 's"></i>').join("");
 $("links").innerHTML = activos.map((l, i) =>
@@ -458,7 +515,7 @@ $("links").innerHTML = activos.map((l, i) =>
   '<span class="w">' + bars() + '</span></a></li>'
 ).join("");
 document.querySelectorAll(".tracks a").forEach(a => {
-  a.addEventListener("pointerenter", () => { note(+a.dataset.i + 1); energy = Math.min(1.6, energy + .5); });
+  a.addEventListener("pointerenter", () => { typeWord(activos[+a.dataset.i].texto); twI = +a.dataset.i + 1; note(+a.dataset.i + 1); energy = Math.min(1.6, energy + .5); });
   a.addEventListener("click", () => note(+a.dataset.i + 3, .5, .1));
 });
 
