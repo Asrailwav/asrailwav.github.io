@@ -227,8 +227,7 @@ const PERFIL = {
   <nav><ul class="tracks" id="links"></ul></nav>
 
   <div class="actions mono">
-    <button id="share" type="button">↗ COMPARTIR</button>
-    <button id="copy" type="button">⧉ COPIAR LINK</button>
+    <button id="share" type="button">↗ COMPARTIR MI PÁGINA</button>
   </div>
 
   <footer class="mono" id="footer"></footer>
@@ -565,7 +564,6 @@ document.querySelectorAll(".tracks a").forEach(a => {
 /* ---------- Compartir / copiar ---------- */
 function toast(){ $("toast").classList.add("show"); setTimeout(() => $("toast").classList.remove("show"), 1800); }
 async function copy(){ try { await navigator.clipboard.writeText(location.href); } catch(e){} toast(); }
-$("copy").addEventListener("click", copy);
 $("share").addEventListener("click", async () => {
   if (navigator.share) { try { await navigator.share({ title: PERFIL.nombre, text: PERFIL.frase, url: location.href }); } catch(e){} }
   else copy();
