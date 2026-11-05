@@ -30,13 +30,14 @@ const PERFIL = {
   banda:   "Nuevos Lanzamientos Pronto",
   foto:    "foto.jpg",
 
-  // 🎵 Canción del tocadiscos (desde YouTube): el código después de youtu.be/
-  //    y el segundo en el que empieza. Para no usarla: cancionYoutube: null
-  cancionYoutube: { id: "7ePpbq5x2Xk", inicio: 15 },
-
-  // Si no hay canción de YouTube: sube tu .mp3 junto a index.html y pon su nombre aquí.
+  // 🎵 Canción del tocadiscos: el .mp3 que está junto a index.html y el segundo en el que empieza.
   //    Si lo dejas vacío ("") o no encuentra el archivo, suena un beat de demo.
   cancion: "cancion.mp3",
+  inicioCancion: 15,
+
+  // (Opcional) Usar una canción de YouTube en lugar del .mp3:
+  //    cancionYoutube: { id: "7ePpbq5x2Xk", inicio: 15 },
+  cancionYoutube: null,
 
   // Video o canción destacada (el código que va después de youtu.be/)
   destacado: {
@@ -89,7 +90,10 @@ const PERFIL = {
   .sound.on{color:var(--ink);border-color:var(--ink)}
 
   /* Vinilo */
-  .vinyl-wrap{display:grid;place-items:center;margin:34px auto 6px;position:relative;width:230px;height:230px}
+  .vinyl-wrap{display:grid;place-items:center;margin:34px auto 6px;position:relative;width:230px;height:230px;
+    transform:scale(calc(1 + var(--lv,0) * .035))}
+  .vinyl-wrap::before{content:"";position:absolute;inset:-18px;border-radius:50%;pointer-events:none;
+    box-shadow:0 0 calc(20px + var(--lv,0) * 70px) rgba(255,255,255,calc(var(--lv,0) * .35));border:1px solid rgba(255,255,255,calc(var(--lv,0) * .25))}
   .vinyl{width:230px;height:230px;border-radius:50%;cursor:grab;position:relative;touch-action:none;
     background:
       radial-gradient(circle, transparent 0 33%, #000 33.5% 34.5%, transparent 35%),
@@ -111,6 +115,7 @@ const PERFIL = {
     position:relative;cursor:default;user-select:none;filter:drop-shadow(0 0 22px rgba(255,255,255,.12))}
   h1 span{display:inline-block;transition:transform .25s cubic-bezier(.3,1.6,.5,1);
     background:linear-gradient(180deg,#ffffff 0%,#e9eaec 45%,#9a9ea5 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+  h1 span{transform:translateY(calc(var(--b,0) * -10px)) scaleY(calc(1 + var(--b,0) * .1))}
   h1 span:nth-child(even){background-image:linear-gradient(180deg,#c9ccd1 0%,#8d9198 55%,#5a5e65 100%)}
   h1::before,h1::after{content:attr(data-t);position:absolute;inset:0;opacity:0}
   h1.glitch::before{opacity:.8;color:var(--red);transform:translate(-3px,1px);clip-path:inset(20% 0 55% 0);animation:g1 .3s steps(2) 2}
@@ -121,7 +126,7 @@ const PERFIL = {
   .handle b{color:var(--ink);font-weight:600}
 
   /* Marquesina */
-  .marquee{margin:26px -16px 0;border-block:1px solid var(--line);overflow:hidden;white-space:nowrap;padding:10px 0}
+  .marquee{margin:26px -16px 0;background:rgba(255,255,255,calc(var(--lv,0) * .07));border-block:1px solid var(--line);overflow:hidden;white-space:nowrap;padding:10px 0}
   .marquee div{display:inline-block;animation:mq 22s linear infinite;font-size:13px;letter-spacing:3px;text-transform:uppercase;color:#c9ccd2}
   .marquee em{font-style:normal;color:var(--muted);margin:0 18px}
   @keyframes mq{to{transform:translateX(-50%)}}
@@ -279,10 +284,22 @@ $("sound").addEventListener("click", () => {
 
 /* ---------- Música del tocadiscos ---------- */
 // 1) Tu canción (.mp3)   2) Si no existe: beat de demo hecho con código
-let song = null, songOk = false;
+let song = null, songOk = false, songStarted = false;
+// Analizador: hace que todo se mueva con la música
+let analyser = null, freq = null, wave = null, level = 0, bands = [0,0,0,0,0,0];
+function hookAnalyser(){
+  if (analyser || !song) return;
+  try {
+    const src = ctx.createMediaElementSource(song);
+    analyser = ctx.createAnalyser(); analyser.fftSize = 1024; analyser.smoothingTimeConstant = .78;
+    src.connect(analyser); analyser.connect(ctx.destination);
+    freq = new Uint8Array(analyser.frequencyBinCount); wave = new Uint8Array(analyser.fftSize);
+  } catch(e) { analyser = null; }
+}
 if (PERFIL.cancion) {
   song = new Audio(PERFIL.cancion);
-  song.loop = true; song.preload = "auto"; song.preservesPitch = false;
+  song.preload = "auto"; song.preservesPitch = false;
+  song.addEventListener("ended", () => { song.currentTime = PERFIL.inicioCancion || 0; song.play(); });  // vuelve a empezar
   song.addEventListener("canplay", () => songOk = true, { once:true });
   song.addEventListener("error", () => { songOk = false; song = null; });
 }
@@ -369,6 +386,12 @@ function musicStart(){
     return;
   }
   if (song) {
+    hookAnalyser();
+    if (!songStarted) {
+      songStarted = true;
+      const go = () => { try { song.currentTime = PERFIL.inicioCancion || 0; } catch(e){} };
+      if (song.readyState >= 1) go(); else song.addEventListener("loadedmetadata", go, { once:true });
+    }
     song.playbackRate = 1;
     song.play().catch(() => { song = null; if (playing) startBeat(); });   // si falla, usa el beat demo
     return;
@@ -448,8 +471,27 @@ addEventListener("pointermove", e => {
 });
 addEventListener("deviceorientation", e => { if (e.gamma != null) { mx = .5 + e.gamma / 90; energy = Math.max(energy, .5); } });
 
+const root = document.documentElement, letters = () => h1.querySelectorAll("span");
 function frame(){
   t += 0.016;
+  // música -> movimiento
+  if (analyser && playing && song && !song.paused) {
+    analyser.getByteFrequencyData(freq); analyser.getByteTimeDomainData(wave);
+    let bass = 0; for (let i = 1; i < 12; i++) bass += freq[i]; bass /= 11 * 255;
+    level += (Math.max(0, bass - .35) / .65 * 1.4 - level) * .35;
+    const L = letters();
+    L.forEach((sp, i) => {
+      const a = 4 + i * 28, b = a + 28; let v = 0;
+      for (let j = a; j < b; j++) v += freq[j]; v /= 28 * 255;
+      bands[i] += (v * 1.3 - bands[i]) * .4;
+      sp.style.setProperty("--b", bands[i].toFixed(3));
+    });
+    energy = Math.max(energy, .6 + level);
+  } else if (level > .001 || bands.some(b => b > .001)) {
+    level *= .9; bands = bands.map(b => b * .9);
+    letters().forEach((sp, i) => sp.style.setProperty("--b", (bands[i] || 0).toFixed(3)));
+  }
+  root.style.setProperty("--lv", Math.min(1, level).toFixed(3));
   // vinilo
   if (!dragging) { speed += (target - speed) * 0.04; angle += speed; }
   vinyl.style.transform = "rotate(" + angle + "deg)";
@@ -466,7 +508,8 @@ function frame(){
       const u = x / W;
       const near = Math.exp(-Math.pow((u - mx) * 4, 2));          // más fuerte cerca del cursor
       const amp = (18 + 70 * near) * energy * dpr * (1 - k * .25);
-      const y = yBase
+      const real = (k === 0 && analyser && playing && level > .001) ? (wave[Math.floor(u * (wave.length - 1))] - 128) / 128 * H * .18 : 0;
+      const y = yBase + real
         + Math.sin(u * 18 + t * (3 + k)) * amp * .5
         + Math.sin(u * 47 - t * 5) * amp * .25 * near
         + Math.sin(u * 7 + t) * amp * .3;
