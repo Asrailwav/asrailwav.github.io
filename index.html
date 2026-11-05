@@ -28,7 +28,7 @@ const PERFIL = {
 
   // Texto de la banda que se desliza (marquesina)
   banda:   "Próximamente, nuevos lanzamientos",
-  foto:    "foto.jpg",
+  foto:    "logo.jpg",   // imagen del centro del disco
 
   // 🎵 Canción del tocadiscos: el .mp3 que está junto a index.html y el segundo en el que empieza.
   //    Si lo dejas vacío ("") o no encuentra el archivo, suena un beat de demo.
@@ -102,8 +102,9 @@ const PERFIL = {
     box-shadow:0 0 0 1px #222, 0 30px 80px rgba(0,0,0,.8), 0 0 60px rgba(255,255,255,.04)}
   .vinyl::before{content:"";position:absolute;inset:0;border-radius:50%;
     background:conic-gradient(from 0deg, transparent 0 10%, rgba(255,255,255,.12) 14%, transparent 20% 60%, rgba(255,255,255,.08) 64%, transparent 70%)}
-  .label{position:absolute;inset:33%;border-radius:50%;overflow:hidden;background:#222 center/cover;filter:grayscale(1) contrast(1.15)}
-  .hole{position:absolute;left:50%;top:50%;width:8px;height:8px;margin:-4px;border-radius:50%;background:var(--bg);box-shadow:0 0 0 1px #333}
+  .label{position:absolute;inset:22%;border-radius:50%;overflow:hidden;background:#000 center/cover;
+    box-shadow:0 0 0 1px #2a2b2e, 0 0 0 5px #0b0b0c, 0 0 0 6px #2a2b2e}
+  .hole{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:var(--bg);box-shadow:0 0 0 1px #333}
   .hint{position:absolute;bottom:-22px;font-size:10px;color:var(--muted);letter-spacing:2px;opacity:.7}
   /* brazo */
   .arm{position:absolute;right:-18px;top:-6px;width:90px;height:120px;pointer-events:none;transform-origin:78px 14px;
@@ -204,7 +205,6 @@ const PERFIL = {
   <div class="vinyl-wrap" id="deck">
     <div class="vinyl" id="vinyl" role="button" tabindex="0" aria-label="Girar el disco">
       <div class="label" id="label"></div>
-      <div class="hole"></div>
     </div>
     <svg class="arm" viewBox="0 0 90 120" fill="none">
       <circle cx="78" cy="14" r="9" fill="#1b1c1f" stroke="#444"/>
